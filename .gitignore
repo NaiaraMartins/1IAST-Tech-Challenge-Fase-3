@@ -5,6 +5,12 @@
 # Ambiente virtual
 .venv/
 
+# Credenciais GCP
+credentials/
+
+# Estudos Optuna (recriáveis via src/ml/tune.py)
+reports/*.db
+
 # Configurações locais do VS Code
 .vscode/
 
@@ -29,3 +35,6 @@ models/
 # Arquivos de ambiente
 .env
 .envrc
+
+# Resultados parciais do Optuna (consolidados em optuna_best_params.json)
+reports/optuna_partial_*.json

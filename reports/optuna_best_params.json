@@ -1,0 +1,29 @@
+{
+  "logistic": {
+    "best_roc_auc_cv": 0.6829604723988547,
+    "best_params": {
+      "C": 0.0019517224641449498
+    }
+  },
+  "random_forest": {
+    "best_roc_auc_cv": 0.6853340806999957,
+    "best_params": {
+      "n_estimators": 376,
+      "max_depth": 11,
+      "min_samples_leaf": 4,
+      "max_features": "sqrt"
+    }
+  },
+  "xgboost": {
+    "best_roc_auc_cv": 0.6860144446706711,
+    "best_params": {
+      "n_estimators": 489,
+      "max_depth": 6,
+      "learning_rate": 0.010131998913068164,
+      "subsample": 0.7928731571301929,
+      "colsample_bytree": 0.7706924812397122,
+      "min_child_weight": 4,
+      "reg_lambda": 2.548092889582749
+    }
+  }
+}

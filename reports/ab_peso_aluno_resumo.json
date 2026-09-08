@@ -1,0 +1,13 @@
+{
+  "campeao_sem_peso_aluno": "random_forest",
+  "roc_auc_teste": 0.6859950947185937,
+  "roc_auc_cv_media": 0.6865566072064725,
+  "cv_folds": 3,
+  "delta_teste_menos_cv": -0.0005615124878788347,
+  "suspeita_de_vazamento": false,
+  "delta_por_modelo": {
+    "logistic": 0.001518406054199839,
+    "random_forest": 0.0021304900671905713,
+    "xgboost": 0.002375951563002743
+  }
+}

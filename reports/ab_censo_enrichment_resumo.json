@@ -1,0 +1,13 @@
+{
+  "campeao_enriquecido": "random_forest",
+  "roc_auc_teste": 0.6881830291496778,
+  "roc_auc_cv_media": 0.6887322754972542,
+  "cv_folds": 3,
+  "delta_teste_menos_cv": -0.0005492463475764708,
+  "suspeita_de_vazamento": false,
+  "delta_por_modelo": {
+    "logistic": 5.532685321574249e-05,
+    "random_forest": 5.731319754309627e-05,
+    "xgboost": 0.0001128811064052826
+  }
+}
