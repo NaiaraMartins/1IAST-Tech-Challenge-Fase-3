@@ -28,6 +28,7 @@ from sklearn.preprocessing import StandardScaler
 
 import config
 from src.preprocessing.features import prepare_data
+from src.visualization.style import BLUE, CATEGORICAL, STATUS, apply_style
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -118,10 +119,10 @@ def q2_municipios_risco(municipal: pd.DataFrame, top_n: int = 30) -> pd.DataFram
 
     top = ranking.head(20).sort_values("risco_medio")
     plt.figure(figsize=(10, 8))
-    plt.barh(top["id_municipio"] + " (" + top["uf"] + ")", top["risco_medio"], color="#c0392b")
+    plt.barh(top["id_municipio"] + " (" + top["uf"] + ")", top["risco_medio"], color=BLUE)
     plt.xlabel("Risco medio previsto (1 - P(alfabetizado))")
     plt.title("P2: Municipios com maior risco educacional previsto", fontweight="bold")
-    plt.grid(axis="x", linestyle="--", alpha=0.6)
+    plt.grid(axis="x")
     plt.tight_layout()
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
     plt.savefig(IMAGES_DIR / "q2_municipios_risco.png", dpi=300)
@@ -179,15 +180,17 @@ def q3_clusters_regionais(municipal: pd.DataFrame, n_clusters: int = 4) -> pd.Da
     composicao.to_csv(REPORTS_DIR / "q3_composicao_uf_cluster.csv")
 
     plt.figure(figsize=(10, 7))
-    for perfil_nome in dados["perfil"].unique():
+    cores_perfil = dict(zip(rotulos, CATEGORICAL))
+    for perfil_nome in rotulos:
         sub = dados[dados["perfil"] == perfil_nome]
+        if sub.empty:
+            continue
         plt.scatter(sub["inse_municipio"], sub["taxa_alfabetizacao_real"],
-                    label=perfil_nome, alpha=0.5, s=12)
+                    label=perfil_nome, color=cores_perfil[perfil_nome], alpha=0.5, s=12)
     plt.xlabel("INSE do municipio")
     plt.ylabel("Taxa de alfabetizacao real (%)")
     plt.title("P3: Agrupamento de municipios por padrao educacional", fontweight="bold")
     plt.legend(title="Perfil")
-    plt.grid(linestyle="--", alpha=0.5)
     plt.tight_layout()
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
     plt.savefig(IMAGES_DIR / "q3_clusters_regionais.png", dpi=300)
@@ -251,15 +254,15 @@ def q4_risco_meta_2030(municipal: pd.DataFrame) -> pd.DataFrame:
                                 "ritmo_necessario_aa"]].to_string(index=False))
 
     plt.figure(figsize=(9, 6))
-    cores = {"Meta ja atingida": "#27ae60", "Provavel atingir": "#2ecc71",
-             "Risco moderado": "#f39c12", "Risco alto de nao atingir": "#c0392b"}
+    cores = {"Meta ja atingida": STATUS["good"], "Provavel atingir": STATUS["good"],
+             "Risco moderado": STATUS["warning"], "Risco alto de nao atingir": STATUS["critical"]}
     contagem = dados["classificacao_meta"].value_counts()
     plt.bar(contagem.index, contagem.values,
             color=[cores.get(c, "#888") for c in contagem.index])
     plt.ylabel("Numero de municipios")
     plt.title("P4: Projecao de atingimento da meta de alfabetizacao 2030", fontweight="bold")
     plt.xticks(rotation=20, ha="right")
-    plt.grid(axis="y", linestyle="--", alpha=0.6)
+    plt.grid(axis="y")
     plt.tight_layout()
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
     plt.savefig(IMAGES_DIR / "q4_projecao_metas.png", dpi=300)
@@ -274,6 +277,7 @@ def main(model_filename: str = "random_forest.joblib") -> None:
         raise FileNotFoundError(
             f"Modelo nao encontrado em {model_path}. Rode 'python -m src.modeling.train' antes.")
 
+    apply_style()
     log.info("Carregando pipeline campeao: %s", model_path)
     pipeline = joblib.load(model_path)
 

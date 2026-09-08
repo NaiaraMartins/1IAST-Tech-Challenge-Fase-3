@@ -8,6 +8,16 @@ import seaborn as sns
 from google.cloud import bigquery
 
 import config
+from src.visualization.style import (
+    CATEGORICAL,
+    DIVERGING_BLUE_RED,
+    INK_MUTED,
+    INK_PRIMARY,
+    SEQUENTIAL_BLUES,
+    apply_style,
+)
+
+TARGET_COLORS = {"Não": CATEGORICAL[1], "Nao": CATEGORICAL[1], "Sim": CATEGORICAL[0]}
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -61,7 +71,7 @@ def load_gold_data(client: bigquery.Client) -> pd.DataFrame:
 
 def run_exploratory_analysis(df: pd.DataFrame) -> dict:
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
-    sns.set_theme(style="whitegrid")
+    apply_style()
 
     log.info("Gerando estatisticas descritivas...")
     stats = {
@@ -72,7 +82,7 @@ def run_exploratory_analysis(df: pd.DataFrame) -> dict:
     }
 
     plt.figure(figsize=(6, 4))
-    sns.countplot(data=df, x="alfabetizado", hue="alfabetizado", palette="Blues_r", legend=False)
+    sns.countplot(data=df, x="alfabetizado", hue="alfabetizado", palette=TARGET_COLORS, legend=False)
     plt.title("Distribuicao da Variavel Alvo (Alfabetizado)")
     plt.xlabel("Status de Alfabetizacao")
     plt.ylabel("Quantidade de registros aluno x edicao")
@@ -84,7 +94,7 @@ def run_exploratory_analysis(df: pd.DataFrame) -> dict:
     df_corr = df[NUMERIC_FEATURES].copy()
     df_corr["target_num"] = df["alfabetizado"].map({"Não": 0, "Nao": 0, "Sim": 1, 0: 0, 1: 1})
     corr_matrix = df_corr.corr()
-    sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap="Blues", square=True)
+    sns.heatmap(corr_matrix, annot=True, fmt=".2f", cmap=DIVERGING_BLUE_RED, vmin=-1, vmax=1, center=0, square=True)
     plt.title("Matriz de Correlacao - Camada Gold")
     plt.tight_layout()
     plt.savefig(IMAGES_DIR / "correlation_matrix.png", dpi=300)
@@ -92,7 +102,7 @@ def run_exploratory_analysis(df: pd.DataFrame) -> dict:
 
     if "inse_municipio" in df.columns:
         plt.figure(figsize=(8, 5))
-        sns.boxplot(data=df, x="alfabetizado", y="inse_municipio", hue="alfabetizado", palette="Set2", legend=False)
+        sns.boxplot(data=df, x="alfabetizado", y="inse_municipio", hue="alfabetizado", palette=TARGET_COLORS, legend=False)
         plt.title("Distribuicao do INSE Municipal por Status de Alfabetizacao")
         plt.xlabel("Alfabetizado")
         plt.ylabel("INSE do Municipio")
@@ -132,14 +142,22 @@ def plot_taxa_alfabetizacao_uf_mapa(df: pd.DataFrame, geojson_path: Path = GEOJS
 
     fig, ax = plt.subplots(figsize=(9, 9))
     br_uf.plot(
-        column="taxa_alfabetizacao", cmap="RdYlGn", legend=True,
-        edgecolor="white", linewidth=0.6, ax=ax,
+        column="taxa_alfabetizacao", cmap=SEQUENTIAL_BLUES, legend=True,
+        edgecolor=INK_MUTED, linewidth=0.7, ax=ax,
         legend_kwds={"label": "% alfabetizados", "shrink": 0.6},
+        missing_kwds={
+            "color": "#f0efec", "edgecolor": INK_MUTED, "linewidth": 0.7,
+            "hatch": "///", "label": "Sem dados na gold",
+        },
     )
     for _, row in br_uf.iterrows():
         centroid = row.geometry.representative_point()
-        ax.annotate(row["sigla"], (centroid.x, centroid.y), ha="center", fontsize=8, fontweight="bold")
+        cor_texto = "white" if pd.notna(row["taxa_alfabetizacao"]) and row["taxa_alfabetizacao"] > 60 else INK_PRIMARY
+        ax.annotate(row["sigla"], (centroid.x, centroid.y), ha="center", fontsize=8,
+                    fontweight="bold", color=cor_texto)
     ax.set_title("Taxa de alfabetizacao por UF", fontweight="bold")
+    if sem_dado:
+        ax.legend(loc="lower left", frameon=False, fontsize=9)
     ax.axis("off")
     plt.tight_layout()
 

@@ -84,9 +84,10 @@ requirements.txt
 ## 6. Etapas de Modelagem
 
 1. **Camada Gold ML** (`build_gold_ml.py`): integra as fontes da Fase 2 no grao de aluno e acrescenta o enriquecimento externo (Censo Escolar e Indicadores Educacionais) por JOIN cross-project no BigQuery publico da Base dos Dados.
-2. **Analise exploratoria** (`notebooks/01_analise_exploratoria.ipynb` + `eda_plots.py`): distribuicoes, correlacoes, nulos e formulacao das hipoteses H1-H4. A disparidade territorial da Hipotese H3 (secao 7 do notebook) tem tambem um mapa coropletico por UF, gerado por `plot_taxa_alfabetizacao_uf_mapa` em `eda_plots.py` -- sugestao do Prof. Gabriel Ortelan pra tornar a disparidade mais intuitiva do que 27 barras. O proprio mapa evidenciou algo que a barra escondia: **Roraima (RR) nao tem nenhuma linha na gold** (`sigla_uf_code` so cobre 26 dos 27 estados), por isso aparece em branco.
+2. **Analise exploratoria** (`notebooks/01_analise_exploratoria.ipynb` + `eda_plots.py`): distribuicoes, correlacoes, nulos e formulacao das hipoteses H1-H4. A disparidade territorial da Hipotese H3 (secao 7 do notebook) tem tambem um mapa coropletico por UF, gerado por `plot_taxa_alfabetizacao_uf_mapa` em `eda_plots.py` -- sugestao do Prof. Gabriel Ortelan pra tornar a disparidade mais intuitiva do que 27 barras. O proprio mapa evidenciou algo que a barra escondia: **Roraima (RR) nao tem nenhuma linha na gold** (`sigla_uf_code` so cobre 26 dos 27 estados), por isso aparece hachurada.
 
    ![Taxa de alfabetizacao por UF](images/taxa_alfabetizacao_uf_mapa.png)
+   *Legenda: quanto mais escuro o azul, maior o % de alunos alfabetizados naquela UF. Roraima aparece hachurada -- sem nenhuma linha na gold.*
 3. **Pipeline de pre-processamento** integrado ao modelo em um unico objeto sklearn:
    - `SimpleImputer(median)` + `StandardScaler` nas numericas;
    - `SimpleImputer(most_frequent)` + `OneHotEncoder` nas categoricas;
@@ -259,11 +260,15 @@ Agrupando: o **contexto educacional do municipio** (taxa, media de portugues e a
 **Um alerta metodologico que este projeto tornou concreto.** As 13 variaveis do enriquecimento absorvem 6,96% da importancia -- `ird_medio` sozinha supera o INSE --, e ainda assim o A/B da secao 8 mostrou ganho de ROC-AUC de +0,00006. **Importancia nao e contribuicao preditiva.** Quando uma variavel e redundante com outra ja presente, o Random Forest distribui splits entre as duas e a importancia se reparte, sem que o poder discriminativo aumente. Ler a tabela acima como "regularidade docente explica 1,87% da alfabetizacao" seria exatamente o erro que a remocao de `gap_meta_2030` (secao 7.6) ja havia evitado uma vez.
 
 ![Feature Importance - Random Forest](images/feature_importance_random_forest.png)
+*Legenda: contribuicao relativa (%) de cada variavel para as decisoes do Random Forest -- e a tabela acima em grafico, ordenada da maior para a menor.*
 
 Os graficos SHAP confirmam a direcao: maiores taxas municipais e maior nivel socioeconomico deslocam positivamente a probabilidade de alfabetizacao.
 
 ![SHAP Summary - Random Forest](images/shap_summary_random_forest.png)
+*Legenda: cada ponto e um aluno do conjunto de teste. Posicao no eixo X = quanto aquela variavel empurrou a predicao para "alfabetizado" (direita) ou "nao alfabetizado" (esquerda); cor = se o valor da variavel naquele aluno era alto (vermelho) ou baixo (azul).*
+
 ![SHAP Waterfall - Random Forest](images/shap_waterfall_random_forest.png)
+*Legenda: decomposicao da predicao de um unico aluno -- mostra quais variaveis, e em que magnitude, moveram a probabilidade dele a partir da media geral do modelo.*
 
 ### 9.2 Quais municipios apresentam maior risco educacional?
 
@@ -281,6 +286,7 @@ Agregando o risco previsto (`1 - P(alfabetizado)`) por municipio, entre 4.177 mu
 Ranking completo em `reports/q2_ranking_municipios_risco.csv`. A concentracao no Norte/Nordeste e consistente com a geografia educacional conhecida do pais.
 
 ![Municipios com maior risco educacional](images/q2_municipios_risco.png)
+*Legenda: os 20 municipios com maior risco medio previsto pelo modelo (1 - P(alfabetizado)), entre os que tem pelo menos 20 alunos avaliados no teste.*
 
 ### 9.3 Quais regioes possuem padroes semelhantes?
 
@@ -298,6 +304,7 @@ KMeans (k=4) sobre risco previsto, taxa real, INSE, gap ate a meta e participaca
 Detalhamento em `reports/q3_perfil_clusters.csv` e `q3_municipios_por_cluster.csv`.
 
 ![Agrupamento de municipios por padrao educacional](images/q3_clusters_regionais.png)
+*Legenda: cada ponto e um municipio, posicionado por INSE (eixo X) e taxa de alfabetizacao real (eixo Y); a cor indica o cluster KMeans (k=4) da tabela acima. A dispersao horizontal dentro de cada cor e o que sustenta o insight de que INSE nao separa os grupos.*
 
 ### 9.4 Como prever municipios que podem nao atingir metas futuras?
 
@@ -315,6 +322,7 @@ Projecao ate 2030 comparando a taxa atual com a meta oficial e o ritmo anual nec
 Lista completa em `reports/q4_municipios_risco_meta.csv`.
 
 ![Projecao de atingimento da meta 2030](images/q4_projecao_metas.png)
+*Legenda: numero de municipios em cada faixa de risco de nao atingir a meta 2030, da mais confortavel (verde) a mais critica (vermelho) -- ver tabela acima para os percentuais.*
 
 ## 10. Decisao de Negocio: Threshold Tuning para Busca Ativa
 

@@ -12,6 +12,8 @@ from google.cloud import bigquery
 
 import config
 from src.preprocessing.features import prepare_data
+from src.visualization.eda_plots import UF_NOMES
+from src.visualization.style import BLUE, INK_MUTED, apply_style
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger(__name__)
@@ -20,9 +22,27 @@ MODELS_DIR = Path("models")
 REPORTS_DIR = Path("reports")
 IMAGES_DIR = Path("images")
 
+TOP_N_IMPORTANCE = 20
+
+
+def _nome_legivel(nome: str) -> str:
+    """
+    Nomes crus pos-ColumnTransformer (ex.: "numeric__taxa_alfabetizacao_municipio",
+    "categorical__sigla_uf_code_23") viram ilegiveis num grafico com 40+ barras.
+    Tira o prefixo do transformer e traduz o codigo IBGE de UF para a sigla.
+    """
+    nome = nome.split("__", 1)[-1]
+    if nome.startswith("sigla_uf_code_"):
+        codigo = nome.replace("sigla_uf_code_", "")
+        return f"UF: {UF_NOMES.get(codigo, codigo)}"
+    if nome.startswith("rede_"):
+        return f"Rede: {nome.replace('rede_', '')}"
+    return nome
+
 
 def generate_shap_and_importance(model_filename: str = "xgboost.joblib", sample_size: int = 2000) -> None:
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+    apply_style()
     model_path = MODELS_DIR / model_filename
     if not model_path.exists():
         raise FileNotFoundError(f"Modelo nao encontrado em {model_path}. Rode 'python -m src.modeling.train' antes.")
@@ -61,12 +81,30 @@ def generate_shap_and_importance(model_filename: str = "xgboost.joblib", sample_
         df_imp.to_csv(REPORTS_DIR / f"feature_importance_{model_tag}.csv", index=False)
         log.info("\n===== FEATURE IMPORTANCE (%s) =====\n%s", model_tag, df_imp.to_string(index=False))
 
-        plt.figure(figsize=(10, 6))
-        df_plot = df_imp.sort_values("contribuicao_pct", ascending=True)
-        plt.barh(df_plot["variavel"], df_plot["contribuicao_pct"], color="#008080")
+        # O CSV completo tem 40+ variaveis (uma por categoria do OneHotEncoder) --
+        # ilegivel num unico grafico. Mostra as top N e dobra o resto numa unica
+        # barra "Outras", em vez de truncar a informacao em silencio.
+        top = df_imp.head(TOP_N_IMPORTANCE).copy()
+        resto = df_imp.iloc[TOP_N_IMPORTANCE:]
+        top["rotulo"] = top["variavel"].apply(_nome_legivel)
+        if not resto.empty:
+            outras = pd.DataFrame([{
+                "variavel": "outras", "rotulo": f"Outras {len(resto)} variaveis (UF, rede)",
+                "importancia": resto["importancia"].sum(),
+                "contribuicao_pct": round(resto["contribuicao_pct"].sum(), 2),
+            }])
+            df_plot = pd.concat([top, outras], ignore_index=True)
+        else:
+            df_plot = top
+        df_plot = df_plot.sort_values("contribuicao_pct", ascending=True)
+
+        altura = max(6, 0.32 * len(df_plot) + 1.5)
+        plt.figure(figsize=(10, altura))
+        cores = [INK_MUTED if v == "outras" else BLUE for v in df_plot["variavel"]]
+        plt.barh(df_plot["rotulo"], df_plot["contribuicao_pct"], color=cores)
         plt.title(f"Fatores que mais impactam a alfabetizacao ({model_tag})", fontsize=12, fontweight="bold")
         plt.xlabel("Contribuicao relativa (%)")
-        plt.grid(axis="x", linestyle="--", alpha=0.7)
+        plt.grid(axis="x")
         plt.tight_layout()
         plt.savefig(IMAGES_DIR / f"feature_importance_{model_tag}.png", dpi=300)
         plt.close()
